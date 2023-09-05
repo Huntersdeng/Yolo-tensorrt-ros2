@@ -15,13 +15,15 @@
 #include "stardust_tensorrt/yolov8.h"
 #include "stardust_tensorrt/yolov5.h"
 
-class DetectionNode: public rclcpp::Node {
+class DetectionNode : public rclcpp::Node
+{
 public:
     DetectionNode();
     ~DetectionNode();
     void initialize_publishers();
     void initialize_subscribers();
     void image_callback(const sensor_msgs::msg::Image::ConstSharedPtr msg_rgb, const sensor_msgs::msg::Image::ConstSharedPtr msg_depth);
+
 private:
     // yolov8
     std::string m_engine_file_path;
@@ -37,4 +39,4 @@ private:
     rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr pub_detection;
 };
 
-#endif //STARDUST_TENSORRT_ROS2_NODE_H
+#endif // STARDUST_TENSORRT_ROS2_NODE_H

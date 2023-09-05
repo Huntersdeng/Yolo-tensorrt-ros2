@@ -52,7 +52,7 @@ void YOLOv8::postprocess(std::vector<Object> &objs)
     }
 }
 
-void YOLOv8::detect(const cv::Mat &image, std::vector<det::Object>& objs)
+void YOLOv8::detect(const cv::Mat &image, std::vector<det::Object> &objs)
 {
     this->preprocess(image);
     this->infer();

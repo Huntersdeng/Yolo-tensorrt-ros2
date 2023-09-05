@@ -2,7 +2,7 @@
 
 using namespace det;
 
-Model::Model(const std::string& engine_file_path)
+Model::Model(const std::string &engine_file_path)
 {
     // 读取模型文件
     std::ifstream file(engine_file_path, std::ios::binary);
@@ -10,7 +10,7 @@ Model::Model(const std::string& engine_file_path)
     file.seekg(0, std::ios::end);
     auto size = file.tellg();
     file.seekg(0, std::ios::beg);
-    char* trtModelStream = new char[size];
+    char *trtModelStream = new char[size];
     assert(trtModelStream);
     file.read(trtModelStream, size);
     file.close();
@@ -33,28 +33,31 @@ Model::Model(const std::string& engine_file_path)
 
     // 创建cudaStream_t对象
     cudaStreamCreate(&this->stream);
-    
+
     this->num_bindings = this->engine->getNbBindings();
-    for (int i = 0; i < this->num_bindings; ++i) {
-        Binding            binding;
-        nvinfer1::Dims     dims;
+    for (int i = 0; i < this->num_bindings; ++i)
+    {
+        Binding binding;
+        nvinfer1::Dims dims;
         nvinfer1::DataType dtype = this->engine->getBindingDataType(i);
-        std::string        name  = this->engine->getBindingName(i);
-        binding.name             = name;
-        binding.dsize            = type_to_size(dtype);
+        std::string name = this->engine->getBindingName(i);
+        binding.name = name;
+        binding.dsize = type_to_size(dtype);
 
         bool IsInput = engine->bindingIsInput(i);
-        if (IsInput) {
+        if (IsInput)
+        {
             this->num_inputs += 1;
-            dims         = this->engine->getProfileDimensions(i, 0, nvinfer1::OptProfileSelector::kMAX);
+            dims = this->engine->getProfileDimensions(i, 0, nvinfer1::OptProfileSelector::kMAX);
             binding.size = get_size_by_dims(dims);
             binding.dims = dims;
             this->input_bindings.push_back(binding);
             // set max opt shape
             this->context->setBindingDimensions(i, dims);
         }
-        else {
-            dims         = this->context->getBindingDimensions(i);
+        else
+        {
+            dims = this->context->getBindingDimensions(i);
             binding.size = get_size_by_dims(dims);
             binding.dims = dims;
             this->output_bindings.push_back(binding);
@@ -72,25 +75,29 @@ Model::~Model()
     this->engine->destroy();
     this->runtime->destroy();
     cudaStreamDestroy(this->stream);
-    for (auto& ptr : this->device_ptrs) {
+    for (auto &ptr : this->device_ptrs)
+    {
         CHECK(cudaFree(ptr));
     }
 
-    for (auto& ptr : this->host_ptrs) {
+    for (auto &ptr : this->host_ptrs)
+    {
         CHECK(cudaFreeHost(ptr));
     }
 }
 void Model::make_pipe(bool warmup)
 {
 
-    for (auto& bindings : this->input_bindings) {
-        void* d_ptr;
+    for (auto &bindings : this->input_bindings)
+    {
+        void *d_ptr;
         CHECK(cudaMalloc(&d_ptr, bindings.size * bindings.dsize));
         this->device_ptrs.push_back(d_ptr);
     }
 
-    for (auto& bindings : this->output_bindings) {
-        void * d_ptr, *h_ptr;
+    for (auto &bindings : this->output_bindings)
+    {
+        void *d_ptr, *h_ptr;
         size_t size = bindings.size * bindings.dsize;
         CHECK(cudaMalloc(&d_ptr, size));
         CHECK(cudaHostAlloc(&h_ptr, size, 0));
@@ -98,11 +105,14 @@ void Model::make_pipe(bool warmup)
         this->host_ptrs.push_back(h_ptr);
     }
 
-    if (warmup) {
-        for (int i = 0; i < 10; i++) {
-            for (auto& bindings : this->input_bindings) {
-                size_t size  = bindings.size * bindings.dsize;
-                void*  h_ptr = malloc(size);
+    if (warmup)
+    {
+        for (int i = 0; i < 10; i++)
+        {
+            for (auto &bindings : this->input_bindings)
+            {
+                size_t size = bindings.size * bindings.dsize;
+                void *h_ptr = malloc(size);
                 memset(h_ptr, 0, size);
                 CHECK(cudaMemcpyAsync(this->device_ptrs[0], h_ptr, size, cudaMemcpyHostToDevice, this->stream));
                 free(h_ptr);
@@ -117,7 +127,8 @@ void Model::infer()
 {
 
     this->context->enqueueV2(this->device_ptrs.data(), this->stream, nullptr);
-    for (int i = 0; i < this->num_outputs; i++) {
+    for (int i = 0; i < this->num_outputs; i++)
+    {
         size_t osize = this->output_bindings[i].size * this->output_bindings[i].dsize;
         CHECK(cudaMemcpyAsync(
             this->host_ptrs[i], this->device_ptrs[i + this->num_inputs], osize, cudaMemcpyDeviceToHost, this->stream));

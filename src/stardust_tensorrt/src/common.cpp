@@ -109,7 +109,8 @@ void draw_objects(const cv::Mat &image,
     }
 }
 
-float iou(cv::Rect bb_test, cv::Rect bb_gt) {
+float iou(cv::Rect bb_test, cv::Rect bb_gt)
+{
     float in = (bb_test & bb_gt).area();
     float un = bb_test.area() + bb_gt.area() - in;
 
@@ -119,26 +120,34 @@ float iou(cv::Rect bb_test, cv::Rect bb_gt) {
     return in / un;
 }
 
-void nms(std::vector<Object>& res, float nms_thresh) {
+void nms(std::vector<Object> &res, float nms_thresh)
+{
     std::map<float, std::vector<Object>> m;
-    for (const auto& obj: res) {
-        if (m.count(obj.label) == 0) {
+    for (const auto &obj : res)
+    {
+        if (m.count(obj.label) == 0)
+        {
             m.emplace(obj.label, std::vector<Object>());
         }
         m[obj.label].push_back(obj);
     }
-    auto cmp = [](const Object& a, const Object& b) {
+    auto cmp = [](const Object &a, const Object &b)
+    {
         return a.prob > b.prob;
     };
     res.clear();
-    for (auto it = m.begin(); it != m.end(); it++) {
-        auto& dets = it->second;
+    for (auto it = m.begin(); it != m.end(); it++)
+    {
+        auto &dets = it->second;
         std::sort(dets.begin(), dets.end(), cmp);
-        for (size_t m = 0; m < dets.size(); ++m) {
-            auto& item = dets[m];
+        for (size_t m = 0; m < dets.size(); ++m)
+        {
+            auto &item = dets[m];
             res.push_back(item);
-            for (size_t n = m + 1; n < dets.size(); ++n) {
-                if (iou(item.rect, dets[n].rect) > nms_thresh) {
+            for (size_t n = m + 1; n < dets.size(); ++n)
+            {
+                if (iou(item.rect, dets[n].rect) > nms_thresh)
+                {
                     dets.erase(dets.begin() + n);
                     --n;
                 }

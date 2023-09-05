@@ -2,7 +2,8 @@
 
 using namespace det;
 
-DetectionNode::DetectionNode() : Node("YOLO", rclcpp::NodeOptions().automatically_declare_parameters_from_overrides(true)) {
+DetectionNode::DetectionNode() : Node("YOLO", rclcpp::NodeOptions().automatically_declare_parameters_from_overrides(true))
+{
     std::string model_name;
     float conf_thres, nms_thres;
     int class_num;
@@ -11,11 +12,11 @@ DetectionNode::DetectionNode() : Node("YOLO", rclcpp::NodeOptions().automaticall
     this->get_parameter_or("conf_thres", conf_thres, 0.25f);
     this->get_parameter_or("nms_thres", nms_thres, 0.65f);
     this->get_parameter_or("class_num", class_num, 80);
-    
+
     RCLCPP_INFO(this->get_logger(), "Initializing %s from %s", model_name.c_str(), m_engine_file_path.c_str());
     RCLCPP_INFO(this->get_logger(), "Conf-thres: %f, NMS-thres: %f, class-num: %d", conf_thres, nms_thres, class_num);
-    
-    if (model_name == "yolov5") 
+
+    if (model_name == "yolov5")
         m_model = std::make_shared<YOLOv5>(m_engine_file_path, conf_thres, nms_thres, class_num);
     else if (model_name == "yolov8")
         m_model = std::make_shared<YOLOv8>(m_engine_file_path);
@@ -40,7 +41,7 @@ void DetectionNode::initialize_subscribers()
                                      std::placeholders::_2));
 }
 
-void DetectionNode::initialize_publishers() 
+void DetectionNode::initialize_publishers()
 {
     std::string output_topic;
     this->get_parameter_or("output_topic", output_topic, std::string("trash_detection/detection"));
@@ -55,7 +56,7 @@ void DetectionNode::image_callback(const sensor_msgs::msg::Image::ConstSharedPtr
     auto start = std::chrono::system_clock::now();
     m_model->detect(img_raw, objs);
     auto end = std::chrono::system_clock::now();
-    
+
     cv::Mat res;
     draw_objects(img_raw, res, objs, CLASS_NAMES, COLORS);
     auto tc = (double)std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() / 1000.;
@@ -64,7 +65,8 @@ void DetectionNode::image_callback(const sensor_msgs::msg::Image::ConstSharedPtr
     pub_detection->publish(*(cv_bridge::CvImage(std_msgs::msg::Header(), "rgb8", res).toImageMsg()));
 }
 
-int main(int argc, char** argv) {
+int main(int argc, char **argv)
+{
     rclcpp::init(argc, argv);
     auto node = std::make_shared<DetectionNode>();
     rclcpp::spin(node);
