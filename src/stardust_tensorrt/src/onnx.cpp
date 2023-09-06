@@ -61,8 +61,9 @@ ONNXFramework::ONNXFramework(std::string model_path)
 
     Ort::TypeInfo outputTypeInfo = session.GetOutputTypeInfo(0);
     size_t output_count = outputTypeInfo.GetTensorTypeAndShapeInfo().GetElementCount();
+    std::cout << "Output count: " << output_count << std::endl;
 
-    float* temp_output_ptr = (float*)malloc(output_count);
+    float* temp_output_ptr = (float*)malloc(sizeof(float) * output_count);
     assert(temp_output_ptr != nullptr);
     temp_output_ptrs.push_back(temp_output_ptr);
 }
