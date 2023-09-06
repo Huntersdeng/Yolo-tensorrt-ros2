@@ -2,6 +2,62 @@
 
 using namespace det;
 
+void Logger::log(nvinfer1::ILogger::Severity severity, const char *msg) noexcept
+{
+    if (severity > reportableSeverity)
+    {
+        return;
+    }
+    switch (severity)
+    {
+    case nvinfer1::ILogger::Severity::kINTERNAL_ERROR:
+        std::cerr << "INTERNAL_ERROR: ";
+        break;
+    case nvinfer1::ILogger::Severity::kERROR:
+        std::cerr << "ERROR: ";
+        break;
+    case nvinfer1::ILogger::Severity::kWARNING:
+        std::cerr << "WARNING: ";
+        break;
+    case nvinfer1::ILogger::Severity::kINFO:
+        std::cerr << "INFO: ";
+        break;
+    default:
+        std::cerr << "VERBOSE: ";
+        break;
+    }
+    std::cerr << msg << std::endl;
+}
+
+int get_size_by_dims(const nvinfer1::Dims &dims)
+{
+    int size = 1;
+    for (int i = 0; i < dims.nbDims; i++)
+    {
+        size *= dims.d[i];
+    }
+    return size;
+}
+
+int type_to_size(const nvinfer1::DataType &dataType)
+{
+    switch (dataType)
+    {
+    case nvinfer1::DataType::kFLOAT:
+        return 4;
+    case nvinfer1::DataType::kHALF:
+        return 2;
+    case nvinfer1::DataType::kINT32:
+        return 4;
+    case nvinfer1::DataType::kINT8:
+        return 1;
+    case nvinfer1::DataType::kBOOL:
+        return 1;
+    default:
+        return 4;
+    }
+}
+
 TensorRTFramework::TensorRTFramework(const std::string &engine_file_path)
 {
     // 读取模型文件

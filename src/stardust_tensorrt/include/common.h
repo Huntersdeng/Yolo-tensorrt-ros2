@@ -4,7 +4,6 @@
 
 #ifndef STARDUST_TENSORRT_COMMON_H
 #define STARDUST_TENSORRT_COMMON_H
-#include "NvInfer.h"
 #include "opencv2/opencv.hpp"
 #include <sys/stat.h>
 #include <unistd.h>
@@ -47,14 +46,6 @@ void read_class_name(std::string file_name, std::vector<std::string> &class_name
 
 namespace det
 {
-    struct Binding
-    {
-        size_t size = 1;
-        size_t dsize = 1;
-        nvinfer1::Dims dims;
-        std::string name;
-    };
-
     struct Object
     {
         cv::Rect_<float> rect;
@@ -71,22 +62,6 @@ namespace det
         float width = 0;
     };
 } // namespace det
-
-class Logger : public nvinfer1::ILogger
-{
-public:
-    nvinfer1::ILogger::Severity reportableSeverity;
-
-    explicit Logger(nvinfer1::ILogger::Severity severity = nvinfer1::ILogger::Severity::kINFO) : reportableSeverity(severity)
-    {
-    }
-
-    void log(nvinfer1::ILogger::Severity severity, const char *msg) noexcept override;
-};
-
-int get_size_by_dims(const nvinfer1::Dims &dims);
-
-int type_to_size(const nvinfer1::DataType &dataType);
 
 inline static float clamp(float val, float min, float max)
 {
@@ -113,4 +88,5 @@ float iou(cv::Rect bb_test, cv::Rect bb_gt);
 void nms(std::vector<det::Object> &res, float nms_thresh);
 
 det::PreParam letterbox(const cv::Mat &image, cv::Mat &out, cv::Size &size);
+
 #endif // STARDUST_TENSORRT_COMMON_H

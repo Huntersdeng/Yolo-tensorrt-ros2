@@ -5,6 +5,33 @@
 #include "framework/framework.h"
 #include <fstream>
 
+namespace det 
+{
+    struct Binding
+    {
+        size_t size = 1;
+        size_t dsize = 1;
+        nvinfer1::Dims dims;
+        std::string name;
+    };
+}
+
+class Logger : public nvinfer1::ILogger
+{
+public:
+    nvinfer1::ILogger::Severity reportableSeverity;
+
+    explicit Logger(nvinfer1::ILogger::Severity severity = nvinfer1::ILogger::Severity::kINFO) : reportableSeverity(severity)
+    {
+    }
+
+    void log(nvinfer1::ILogger::Severity severity, const char *msg) noexcept override;
+};
+
+int get_size_by_dims(const nvinfer1::Dims &dims);
+
+int type_to_size(const nvinfer1::DataType &dataType);
+
 class TensorRTFramework: public BaseFramework
 {
 public:

@@ -2,9 +2,11 @@
 #define JETSON_DETECT_MODEL_H
 #include "common.h"
 #include "framework/framework.h"
-#include "framework/framework.h"
 #include "framework/onnx.h"
-#include "framework/tensorrt.h"
+
+#ifdef USE_TENSORRT
+    #include "framework/tensorrt.h"
+#endif
 
 class Model
 {

@@ -1,6 +1,5 @@
 #ifndef JETSON_DETECT_YOLOV5_H
 #define JETSON_DETECT_YOLOV5_H
-#include "NvInferPlugin.h"
 #include "model/model.h"
 #include "fstream"
 

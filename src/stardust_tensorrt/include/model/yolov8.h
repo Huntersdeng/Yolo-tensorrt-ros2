@@ -3,7 +3,6 @@
 //
 #ifndef JETSON_DETECT_YOLOV8_H
 #define JETSON_DETECT_YOLOV8_H
-#include "NvInferPlugin.h"
 #include "model/model.h"
 #include "fstream"
 

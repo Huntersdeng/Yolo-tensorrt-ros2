@@ -1,4 +1,5 @@
 *.engine
+*.onnx
 install
 build
 log

@@ -6,11 +6,19 @@ Model::Model(const std::string &model_path)
     if (suffixStr == "onnx")
     {
         framework = std::make_shared<ONNXFramework>(model_path);
-    } else if (suffixStr == "engine")
+    }
+    #ifdef USE_TENSORRT
+    else if (suffixStr == "engine")
     {
         framework = std::make_shared<TensorRTFramework>(model_path);
-    }else 
+    }
+    #endif
+    else 
     {
-        framework = std::make_shared<ONNXFramework>(model_path);
+        #ifdef USE_TENSORRT
+            std::cerr << "Only support *.onnx and *.engine files" << std::endl;
+        #else 
+            std::cerr << "Only support *.onnx files" << std::endl;
+        #endif
     }
 }
