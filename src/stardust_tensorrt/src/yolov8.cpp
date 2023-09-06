@@ -1,4 +1,4 @@
-#include "stardust_tensorrt/yolov8.h"
+#include "model/yolov8.h"
 
 using namespace det;
 
@@ -11,18 +11,13 @@ YOLOv8::~YOLOv8()
     std::cout << "Destruct yolov8" << std::endl;
 }
 
-void YOLOv8::preprocess(const cv::Mat &image)
-{
-    copy_from_Mat(image);
-}
-
-void YOLOv8::postprocess(std::vector<Object> &objs)
+void YOLOv8::postprocess(const std::vector<void*> output, std::vector<Object> &objs)
 {
     objs.clear();
-    int *num_dets = static_cast<int *>(this->host_ptrs[0]);
-    auto *boxes = static_cast<float *>(this->host_ptrs[1]);
-    auto *scores = static_cast<float *>(this->host_ptrs[2]);
-    int *labels = static_cast<int *>(this->host_ptrs[3]);
+    int *num_dets = static_cast<int *>(output[0]);
+    auto *boxes = static_cast<float *>(output[1]);
+    auto *scores = static_cast<float *>(output[2]);
+    int *labels = static_cast<int *>(output[3]);
     auto &dw = this->pparam.dw;
     auto &dh = this->pparam.dh;
     auto &width = this->pparam.width;
@@ -54,7 +49,9 @@ void YOLOv8::postprocess(std::vector<Object> &objs)
 
 void YOLOv8::detect(const cv::Mat &image, std::vector<det::Object> &objs)
 {
-    this->preprocess(image);
-    this->infer();
-    this->postprocess(objs);
+    cv::Mat nchw;
+    this->pparam = letterbox(image, nchw, m_input_size_);
+    std::vector<void*> output;
+    this->framework->forward(nchw, output);
+    postprocess(output, objs);
 }

@@ -49,7 +49,9 @@ list(APPEND INCLUDE_DIRS
         include
         )
 
-add_executable(yolo src/ros2_node.cpp src/yolov8.cpp src/model.cpp src/common.cpp src/yolov5.cpp)
+file(GLOB_RECURSE SRCS ${PROJECT_SOURCE_DIR}/src/*.cpp)
+
+add_executable(yolo ${SRCS})
 target_include_directories(yolo PUBLIC ${INCLUDE_DIRS})
 target_link_libraries(yolo nvinfer nvinfer_plugin)
 target_link_directories(yolo PUBLIC ${TensorRT_LIBRARIES})
@@ -62,11 +64,6 @@ install(TARGETS
 
 install(DIRECTORY 
   launch
-  DESTINATION share/${PROJECT_NAME}
-)
-
-install(DIRECTORY 
-  model
   DESTINATION share/${PROJECT_NAME}
 )
 

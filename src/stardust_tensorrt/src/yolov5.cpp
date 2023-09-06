@@ -1,15 +1,16 @@
-#include "stardust_tensorrt/yolov5.h"
+#include "model/yolov5.h"
 
 using namespace det;
 
-YOLOv5::YOLOv5(const std::string &engine_file_path) : Model(engine_file_path)
+YOLOv5::YOLOv5(const std::string &model_path) : Model(model_path)
 {
 }
 
-YOLOv5::YOLOv5(const std::string &engine_file_path, float conf_thres, float nms_thres, int class_num) : Model(engine_file_path),
+YOLOv5::YOLOv5(const std::string &model_path, float conf_thres, float nms_thres, int class_num, cv::Size size) : Model(model_path),
                                                                                                         m_conf_thres_(conf_thres),
                                                                                                         m_nms_thres_(nms_thres),
-                                                                                                        m_class_num_(class_num)
+                                                                                                        m_class_num_(class_num),
+                                                                                                        m_input_size_(size)
 
 {
 }
@@ -19,22 +20,16 @@ YOLOv5::~YOLOv5()
     std::cout << "Destruct yolov5" << std::endl;
 }
 
-void YOLOv5::preprocess(const cv::Mat &image)
-{
-    copy_from_Mat(image);
-}
-
-void YOLOv5::postprocess(std::vector<Object> &objs)
+void YOLOv5::postprocess(const std::vector<void*> output, std::vector<Object> &objs)
 {
     objs.clear();
-    float *outputs = static_cast<float *>(this->host_ptrs[0]);
+    float *outputs = static_cast<float *>(output[0]);
 
-    auto &in_binding = this->input_bindings[0];
     int strides[3] = {8, 16, 32};
     int grid_num = 0;
     for (int i = 0; i < 3; i++)
     {
-        grid_num += (in_binding.dims.d[3] / strides[i]) * (in_binding.dims.d[2] / strides[i]) * 3;
+        grid_num += (m_input_size_.width / strides[i]) * (m_input_size_.height / strides[i]) * 3;
     }
 
     auto &dw = this->pparam.dw;
@@ -85,21 +80,9 @@ void YOLOv5::postprocess(std::vector<Object> &objs)
 
 void YOLOv5::detect(const cv::Mat &image, std::vector<det::Object> &objs)
 {
-    auto start = std::chrono::system_clock::now();
-    this->preprocess(image);
-    auto end = std::chrono::system_clock::now();
-    auto tc = (double)std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() / 1000.;
-    std::cout << "Preprocess costs " << tc << " ms" << std::endl;
-
-    start = std::chrono::system_clock::now();
-    this->infer();
-    end = std::chrono::system_clock::now();
-    tc = (double)std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() / 1000.;
-    std::cout << "Inference costs " << tc << " ms" << std::endl;
-
-    start = std::chrono::system_clock::now();
-    this->postprocess(objs);
-    end = std::chrono::system_clock::now();
-    tc = (double)std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() / 1000.;
-    std::cout << "Postprocess costs " << tc << " ms" << std::endl;
+    cv::Mat nchw;
+    this->pparam = letterbox(image, nchw, m_input_size_);
+    std::vector<void*> output;
+    this->framework->forward(nchw, output);
+    postprocess(output, objs);
 }

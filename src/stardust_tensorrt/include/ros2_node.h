@@ -11,9 +11,9 @@
 #include <sensor_msgs/msg/image.hpp>
 #include <image_transport/image_transport.hpp>
 #include <rclcpp/rclcpp.hpp>
-#include "stardust_tensorrt/model.h"
-#include "stardust_tensorrt/yolov8.h"
-#include "stardust_tensorrt/yolov5.h"
+#include "model/model.h"
+#include "model/yolov8.h"
+#include "model/yolov5.h"
 
 class DetectionNode : public rclcpp::Node
 {
@@ -25,9 +25,10 @@ public:
     void image_callback(const sensor_msgs::msg::Image::ConstSharedPtr msg_rgb, const sensor_msgs::msg::Image::ConstSharedPtr msg_depth);
 
 private:
-    // yolov8
+    // yolo
     std::string m_engine_file_path;
     std::shared_ptr<Model> m_model;
+    std::vector<std::string> m_class_names_;
 
     // ros2
     message_filters::Subscriber<sensor_msgs::msg::Image> sub_depth;

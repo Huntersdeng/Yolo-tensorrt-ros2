@@ -1,6 +1,22 @@
-#include "stardust_tensorrt/common.h"
+#include "common.h"
+#include <fstream>
+#include <sstream>
 
 using namespace det;
+
+void read_class_name(std::string file_name, std::vector<std::string> &class_names)
+{
+    std::ifstream in_file;
+    in_file.open(file_name, std::ios::in);
+    assert(in_file.good());
+
+    std::string name;
+    while(getline(in_file, name, '\n'))
+    {
+        class_names.push_back(name);
+    }
+    in_file.close();
+}
 
 void Logger::log(nvinfer1::ILogger::Severity severity, const char *msg) noexcept
 {
@@ -154,4 +170,47 @@ void nms(std::vector<Object> &res, float nms_thresh)
             }
         }
     }
+}
+
+PreParam letterbox(const cv::Mat &image, cv::Mat &out, cv::Size &size)
+{
+    const float inp_h = size.height;
+    const float inp_w = size.width;
+    float height = image.rows;
+    float width = image.cols;
+
+    float r = std::min(inp_h / height, inp_w / width);
+    int padw = std::round(width * r);
+    int padh = std::round(height * r);
+
+    cv::Mat tmp;
+    if ((int)width != padw || (int)height != padh)
+    {
+        cv::resize(image, tmp, cv::Size(padw, padh));
+    }
+    else
+    {
+        tmp = image.clone();
+    }
+
+    float dw = inp_w - padw;
+    float dh = inp_h - padh;
+
+    dw /= 2.0f;
+    dh /= 2.0f;
+    int top = int(std::round(dh - 0.1f));
+    int bottom = int(std::round(dh + 0.1f));
+    int left = int(std::round(dw - 0.1f));
+    int right = int(std::round(dw + 0.1f));
+
+    cv::copyMakeBorder(tmp, tmp, top, bottom, left, right, cv::BORDER_CONSTANT, {114, 114, 114});
+
+    cv::dnn::blobFromImage(tmp, out, 1 / 255.f, cv::Size(), cv::Scalar(0, 0, 0), true, false, CV_32F);
+    PreParam pparam;
+    pparam.ratio = 1 / r;
+    pparam.dw = dw;
+    pparam.dh = dh;
+    pparam.height = height;
+    pparam.width = width;
+    return pparam;
 }

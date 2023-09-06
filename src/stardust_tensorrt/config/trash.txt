@@ -1,0 +1,7 @@
+paper
+mask
+thread
+obstacle
+bottle
+blood
+person
