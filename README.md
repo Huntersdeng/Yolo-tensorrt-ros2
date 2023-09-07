@@ -66,9 +66,12 @@ yolo:
 ```
 
 ## ROS2节点
+现在支持onnxruntime和tensorrt两种推理框架，根据cfg文件中加载的模型文件的后缀来动态选择推理框架
 ```
 // 编译节点
 colcon build
+// 若当前平台不支持tensorrt，可以使用以下命令
+colcon build --cmake-args "-DUSE_TENSORRT=OFF"
 // 运行
 ros2 launch stardust_tensorrt test.py
 ```
