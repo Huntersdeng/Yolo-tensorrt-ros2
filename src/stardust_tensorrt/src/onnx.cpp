@@ -109,7 +109,7 @@ void ONNXFramework::forward(const cv::Mat &image, std::vector<void *> &output)
         auto* rawOutput = outputTensors[i].GetTensorData<float>();
         size_t count = outputTensors[i].GetTensorTypeAndShapeInfo().GetElementCount();
         std::cout << "count: " << count << std::endl;
-        memcpy(temp_output_ptrs[i], rawOutput, count);
+        memcpy(temp_output_ptrs[i], rawOutput, sizeof(float) * count);
     }
     for (const auto& temp_output_ptr: temp_output_ptrs) {
         output.push_back((void*) temp_output_ptr);
