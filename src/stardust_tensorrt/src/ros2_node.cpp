@@ -57,21 +57,115 @@ void DetectionNode::initialize_publishers()
     pub_detection = this->create_publisher<sensor_msgs::msg::Image>(output_topic, 1);
 }
 
+void DetectionNode::initialize_tf(std::string target_frame_id)
+{
+    geometry_msgs::msg::TransformStamped msg_transform;
+    if (is_tf_initialized) return;
+    try {
+        msg_transform = tf_buffer_->lookupTransform(base_frame_id, target_frame_id, tf2::TimePointZero);
+    } catch (tf2::TransformException& ex) {
+        RCLCPP_ERROR_STREAM(this->get_logger(),
+                            "Transform error of sensor data: " << ex.what() << ", quitting callback");
+        return;
+    }
+    pcl_ros::transformAsMatrix(msg_transform, transform_cam);
+    is_tf_initialized = true;
+}
+
+void DetectionNode::cb_get_cam_intrinsic(const sensor_msgs::msg::CameraInfo::SharedPtr msg) {
+    /*
+        @Describe:camera1 内参
+    */
+    cam_intrinsic.fxParam = msg->k[0];
+    cam_intrinsic.cxParam = msg->k[2];
+    cam_intrinsic.fyParam = msg->k[4];
+    cam_intrinsic.cyParam = msg->k[5];
+}
+
 void DetectionNode::image_callback(const sensor_msgs::msg::Image::ConstSharedPtr msg_rgb, const sensor_msgs::msg::Image::ConstSharedPtr msg_depth)
 {
+    // yolo推理
     cv::Mat img_raw = cv_bridge::toCvCopy(msg_rgb, sensor_msgs::image_encodings::RGB8)->image;
     std::vector<det::Object> objs;
     auto start = std::chrono::system_clock::now();
     m_model->detect(img_raw, objs);
     auto end = std::chrono::system_clock::now();
 
+    // 绘制目标检测结果并发布
     cv::Mat res;
     draw_objects(img_raw, res, objs, m_class_names_, COLORS);
     auto tc = (double)std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() / 1000.;
     RCLCPP_INFO(this->get_logger(), "cost %2.4lf ms\n", tc);
 
     pub_detection->publish(*(cv_bridge::CvImage(std_msgs::msg::Header(), "rgb8", res).toImageMsg()));
+
+    // 获取目标点云
+    initialize_tf(msg_depth->header.frame_id);
+
+    std::vector<pcl::PointCloud<pcl::PointXYZ>> clouds;
+    get_objects_cloud(msg_depth, objs, clouds);
+
+    sensor_msgs::msg::PointCloud2 ros_cloud;
+    pcl::PointCloud<pcl::PointXYZ> tmp_cloud;
+    for (const auto& cloud : clouds) {
+        tmp_cloud += cloud;
+    }
+    toROSMsg(tmp_cloud, ros_cloud);
+    ros_cloud.header.frame_id = base_frame_id;
+    ros_cloud.header.stamp = rclcpp::Clock().now();
+    pub_trash_cloud->publish(ros_cloud);
 }
+
+void DetectionNode::get_objects_cloud(const sensor_msgs::msg::Image::ConstSharedPtr msg_depth, const std::vector<Object> &objs, 
+                                      std::vector<pcl::PointCloud<pcl::PointXYZ>> &clouds) {
+    /*
+        @Describe: depth 转 点云
+    */
+    for (const auto& obj : objs) {
+        pcl::PointCloud<pcl::PointXYZ> camera_cloud, base_cloud;
+        get_object_cloud(msg_depth, obj, camera_cloud);
+        pcl::transformPointCloud(camera_cloud, base_cloud, transform_cam);
+        clouds.push_back(std::move(base_cloud));
+    }
+    // pcl::PointCloud<pcl::PointXYZRGB>::Ptr down_cloud(new pcl::PointCloud<pcl::PointXYZRGB>());
+    // pcl::ApproximateVoxelGrid<pcl::PointXYZRGB> vg;
+    // vg.setInputCloud(cloud_raw);
+    // vg.setLeafSize(leafSize, leafSize, leafSize);
+    // vg.filter(*cloud);
+}
+
+void DetectionNode::get_object_cloud(const sensor_msgs::msg::Image::ConstSharedPtr msg_depth, const Object &obj, 
+                                      pcl::PointCloud<pcl::PointXYZ> &cloud) {
+    int x = obj.rect.x;
+    int y = obj.rect.y;
+    int w = obj.rect.width;
+    int h = obj.rect.height;
+    cloud.clear();
+    cloud.height = h;
+    cloud.width = w;
+    cloud.resize(cloud.height * cloud.width);
+    int32_t index = 0;
+    uint16_t* pData = (uint16_t*)&msg_depth->data[0];
+    float tmpDepthValue = 0;
+    auto pt_iter = cloud.begin();
+    for (int j = y; j < y + h; ++j) {
+        for (int i = x; i < x + w; ++i) {
+            index = j * msg_depth->width + i;
+            tmpDepthValue = (pData[index] * 1.0) / 1000.0;
+
+            pcl::PointXYZ& o = *pt_iter++;
+            if (tmpDepthValue > 0) {
+                o.z = tmpDepthValue;
+                o.x = ((float)(i - cam_intrinsic.cxParam) * o.z) / cam_intrinsic.fxParam;
+                o.y = ((float)(j - cam_intrinsic.cyParam) * o.z) / cam_intrinsic.fyParam;
+            } else {
+                o.z = 0.0f;
+                o.x = 0.0f;
+                o.y = 0.0f;
+            }
+        }
+    }
+}  
 
 int main(int argc, char **argv)
 {

@@ -10,6 +10,9 @@
 #include <message_filters/time_synchronizer.h>
 #include <sensor_msgs/msg/image.hpp>
 #include <image_transport/image_transport.hpp>
+#include <tf2_ros/transform_broadcaster.h>
+#include "pcl_ros/impl/transforms.hpp"
+
 #include <rclcpp/rclcpp.hpp>
 #include "model/model.h"
 #include "model/yolov8.h"
@@ -22,7 +25,14 @@ public:
     ~DetectionNode();
     void initialize_publishers();
     void initialize_subscribers();
+    void initialize_tf(std::string target_frame_id);
     void image_callback(const sensor_msgs::msg::Image::ConstSharedPtr msg_rgb, const sensor_msgs::msg::Image::ConstSharedPtr msg_depth);
+    void cb_get_cam_intrinsic(const sensor_msgs::msg::CameraInfo::SharedPtr msg);
+
+    void get_object_cloud(const sensor_msgs::msg::Image::ConstSharedPtr msg_depth, const det::Object &obj,
+                          pcl::PointCloud<pcl::PointXYZ> &cloud);
+    void get_objects_cloud(const sensor_msgs::msg::Image::ConstSharedPtr msg_depth, const std::vector<det::Object> &objs,
+                           std::vector<pcl::PointCloud<pcl::PointXYZ>> &clouds);
 
 private:
     // yolo
@@ -37,7 +47,26 @@ private:
     typedef message_filters::Synchronizer<syncpolicy> Sync;
     std::shared_ptr<Sync> sync;
 
+    rclcpp::Subscription<sensor_msgs::msg::CameraInfo>::SharedPtr sub_cam_info;
+
+    std::shared_ptr<tf2_ros::TransformListener> tf_listener_{nullptr};
+    std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
+
+    Eigen::Matrix4f transform_cam;
+
     rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr pub_detection;
+    rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pub_trash_cloud;
+
+    std::string base_frame_id = "base_footprint";
+    bool is_tf_initialized = false;
+
+    struct CAM_INTRINSIC
+    {
+        float fxParam;
+        float fyParam;
+        float cxParam;
+        float cyParam;
+    } cam_intrinsic;
 };
 
 #endif // STARDUST_TENSORRT_ROS2_NODE_H
