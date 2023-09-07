@@ -32,6 +32,9 @@ DetectionNode::DetectionNode() : Node("YOLO", rclcpp::NodeOptions().automaticall
         m_model = std::make_shared<YOLOv5>(m_engine_file_path);
     initialize_subscribers();
     initialize_publishers();
+
+    tf_buffer_ = std::make_unique<tf2_ros::Buffer>(this->get_clock());
+    tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
 }
 
 DetectionNode::~DetectionNode() {}
@@ -47,6 +50,10 @@ void DetectionNode::initialize_subscribers()
     sync.reset(new Sync(syncpolicy(1), sub_color, sub_depth));
     sync->registerCallback(std::bind(&DetectionNode::image_callback, this, std::placeholders::_1,
                                      std::placeholders::_2));
+
+    sub_cam_info = this->create_subscription<sensor_msgs::msg::CameraInfo>(
+        "/depth/camera_info", 10,
+        std::bind(&DetectionNode::cb_get_cam_intrinsic, this, std::placeholders::_1));
 }
 
 void DetectionNode::initialize_publishers()
@@ -55,12 +62,14 @@ void DetectionNode::initialize_publishers()
     this->get_parameter_or("output_topic", output_topic, std::string("trash_detection/detection"));
     RCLCPP_INFO(this->get_logger(), "Publish topic: %s", output_topic.c_str());
     pub_detection = this->create_publisher<sensor_msgs::msg::Image>(output_topic, 1);
+
+    pub_trash_cloud = this->create_publisher<sensor_msgs::msg::PointCloud2>("trash_detection/trash_cloud", 1);
 }
 
 void DetectionNode::initialize_tf(std::string target_frame_id)
 {
-    geometry_msgs::msg::TransformStamped msg_transform;
     if (is_tf_initialized) return;
+    geometry_msgs::msg::TransformStamped msg_transform;
     try {
         msg_transform = tf_buffer_->lookupTransform(base_frame_id, target_frame_id, tf2::TimePointZero);
     } catch (tf2::TransformException& ex) {
