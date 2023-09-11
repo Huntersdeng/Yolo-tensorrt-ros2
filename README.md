@@ -36,6 +36,9 @@ yolo:
 ```
 // 将pytorch模型转化为onnx
 git clone https://github.com/triple-Mu/YOLOv8-TensorRT.git
+```
+#### det模型
+```
 cd YOLOv8-TensorRT/
 // 下载pytorch模型（或使用自己训练的模型）
 wget https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8s.pt
@@ -53,6 +56,18 @@ python3 export-det.py \
 /usr/src/tensorrt/bin/trtexec \
 --onnx=yolov8s.onnx \
 --saveEngine=yolov8s.engine
+```
+#### seg模型
+```
+cd YOLOv8-TensorRT/
+// 下载pytorch模型（或使用自己训练的模型）
+wget https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8s-seg.pt
+// 转换为onnx
+python3 export-seg.py --weights yolov8s-seg.pt --sim
+// 在Jetson平台上将onnx模型转换为tensorrt
+/usr/src/tensorrt/bin/trtexec \
+--onnx=yolov8s-seg.onnx \
+--saveEngine=yolov8s-seg.engine
 ```
 
 ### ROS2节点配置
