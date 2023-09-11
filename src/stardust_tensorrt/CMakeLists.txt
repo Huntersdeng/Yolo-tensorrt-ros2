@@ -20,7 +20,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -O0")
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_BUILD_TYPE Debug)
 
-configure_file(include/config.h.in config.h)
+configure_file(include/config.h.in include/config.h)
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
@@ -73,7 +73,7 @@ file(GLOB_RECURSE SRCS ${PROJECT_SOURCE_DIR}/src/*.cpp)
 if(USE_TENSORRT)
   message(STATUS "Source files: \n${SRCS}\n")
   add_executable(yolo ${SRCS})
-  target_include_directories(yolo PUBLIC ${INCLUDE_DIRS})
+  target_include_directories(yolo PUBLIC ${INCLUDE_DIRS} ${PROJECT_BINARY_DIR}/include)
   target_link_libraries(yolo nvinfer nvinfer_plugin ${ONNXRUNTIME_LIBS})
   target_link_directories(yolo PUBLIC ${TensorRT_LIBRARIES})
   ament_target_dependencies(yolo OpenCV CUDA rclcpp image_transport sensor_msgs cv_bridge tf2_ros pcl_ros)
@@ -81,7 +81,7 @@ else()
   list(REMOVE_ITEM SRCS ${PROJECT_SOURCE_DIR}/src/tensorrt.cpp)
   message(STATUS "Source files: \n${SRCS}\n")
   add_executable(yolo ${SRCS})
-  target_include_directories(yolo PUBLIC ${INCLUDE_DIRS})
+  target_include_directories(yolo PUBLIC ${INCLUDE_DIRS} ${PROJECT_BINARY_DIR}/include)
   target_link_libraries(yolo ${ONNXRUNTIME_LIBS})
   ament_target_dependencies(yolo OpenCV rclcpp image_transport sensor_msgs cv_bridge tf2_ros pcl_ros)
 endif()
@@ -89,6 +89,16 @@ endif()
 install(TARGETS
   yolo
   DESTINATION lib/${PROJECT_NAME}
+)
+
+install(DIRECTORY 
+  ${PROJECT_SOURCE_DIR}/include
+  DESTINATION include
+)
+
+install(DIRECTORY 
+  ${PROJECT_BINARY_DIR}/include
+  DESTINATION include
 )
 
 install(DIRECTORY 

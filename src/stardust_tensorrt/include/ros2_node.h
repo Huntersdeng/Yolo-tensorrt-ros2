@@ -18,6 +18,7 @@
 #include "model/yolov8.h"
 #include "model/yolov5.h"
 #include "model/yolov8_seg.h"
+#include "config.h"
 
 class DetectionNode : public rclcpp::Node
 {

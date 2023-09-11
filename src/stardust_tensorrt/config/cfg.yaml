@@ -1,8 +1,8 @@
 yolo:
   ros__parameters:
-    model_name: yolov8 # "yolov5" or "yolov8"
-    model_type: seg # "det" or "seg"
-    engine_path: /home/stardust/open_project/YOLOv8-TensorRT/yolov8s-seg.onnx
+    model_name: yolov8                                                       # "yolov5" or "yolov8"
+    model_type: seg                                                          # "det" or "seg"
+    engine_path: /home/jetson/Documents/weights/yolov8s-seg.engine
     conf_thres: 0.25
     nms_thres:  0.65
     class_txt: coco.txt

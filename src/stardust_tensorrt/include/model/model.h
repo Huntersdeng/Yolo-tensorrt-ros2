@@ -3,6 +3,7 @@
 #include "common.h"
 #include "framework/framework.h"
 #include "framework/onnx.h"
+#include "config.h"
 
 #ifdef USE_TENSORRT
     #include "framework/tensorrt.h"
