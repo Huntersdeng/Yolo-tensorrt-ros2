@@ -11,7 +11,7 @@ void read_class_name(std::string file_name, std::vector<std::string> &class_name
     assert(in_file.good());
 
     std::string name;
-    while(getline(in_file, name, '\n'))
+    while (getline(in_file, name, '\n'))
     {
         class_names.push_back(name);
     }
@@ -67,6 +67,43 @@ void draw_objects(const cv::Mat &image,
 
         cv::putText(res, text, cv::Point(x, y + label_size.height), cv::FONT_HERSHEY_SIMPLEX, 0.4, {255, 255, 255}, 1);
     }
+}
+
+void draw_objects_masks(const cv::Mat &image,
+                        cv::Mat &res,
+                        const std::vector<det::Object> &objs,
+                        const std::vector<std::string> &CLASS_NAMES,
+                        const std::vector<std::vector<unsigned int>> &COLORS,
+                        const std::vector<std::vector<unsigned int>> &MASK_COLORS)
+{
+    res = image.clone();
+    cv::Mat mask = image.clone();
+    for (auto &obj : objs)
+    {
+        int idx = obj.label;
+        cv::Scalar color = cv::Scalar(COLORS[idx][0], COLORS[idx][1], COLORS[idx][2]);
+        cv::Scalar mask_color =
+            cv::Scalar(MASK_COLORS[idx % 20][0], MASK_COLORS[idx % 20][1], MASK_COLORS[idx % 20][2]);
+        cv::rectangle(res, obj.rect, color, 2);
+
+        char text[256];
+        sprintf(text, "%s %.1f%%", CLASS_NAMES[idx].c_str(), obj.prob * 100);
+        mask(obj.rect).setTo(mask_color, obj.boxMask);
+
+        int baseLine = 0;
+        cv::Size label_size = cv::getTextSize(text, cv::FONT_HERSHEY_SIMPLEX, 0.4, 1, &baseLine);
+
+        int x = (int)obj.rect.x;
+        int y = (int)obj.rect.y + 1;
+
+        if (y > res.rows)
+            y = res.rows;
+
+        cv::rectangle(res, cv::Rect(x, y, label_size.width, label_size.height + baseLine), {0, 0, 255}, -1);
+
+        cv::putText(res, text, cv::Point(x, y + label_size.height), cv::FONT_HERSHEY_SIMPLEX, 0.4, {255, 255, 255}, 1);
+    }
+    cv::addWeighted(res, 0.5, mask, 0.8, 1, res);
 }
 
 float iou(cv::Rect bb_test, cv::Rect bb_gt)

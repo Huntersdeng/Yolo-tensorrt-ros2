@@ -6,11 +6,10 @@ YOLOv5::YOLOv5(const std::string &model_path) : Model(model_path)
 {
 }
 
-YOLOv5::YOLOv5(const std::string &model_path, float conf_thres, float nms_thres, int class_num, cv::Size size) : Model(model_path),
+YOLOv5::YOLOv5(const std::string &model_path, cv::Size size, float conf_thres, float nms_thres, int class_num) : Model(model_path, size),
                                                                                                         m_conf_thres_(conf_thres),
                                                                                                         m_nms_thres_(nms_thres),
-                                                                                                        m_class_num_(class_num),
-                                                                                                        m_input_size_(size)
+                                                                                                        m_class_num_(class_num)
 
 {
 }
@@ -76,13 +75,4 @@ void YOLOv5::postprocess(const std::vector<void*> output, std::vector<Object> &o
         output_ptr += (m_class_num_ + 5);
     }
     nms(objs, m_nms_thres_);
-}
-
-void YOLOv5::detect(const cv::Mat &image, std::vector<det::Object> &objs)
-{
-    cv::Mat nchw;
-    this->pparam = letterbox(image, nchw, m_input_size_);
-    std::vector<void*> output;
-    this->framework->forward(nchw, output);
-    postprocess(output, objs);
 }

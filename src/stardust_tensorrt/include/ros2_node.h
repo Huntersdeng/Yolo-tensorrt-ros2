@@ -17,6 +17,7 @@
 #include "model/model.h"
 #include "model/yolov8.h"
 #include "model/yolov5.h"
+#include "model/yolov8_seg.h"
 
 class DetectionNode : public rclcpp::Node
 {
@@ -36,6 +37,7 @@ public:
 
 private:
     // yolo
+    std::string m_model_type_;
     std::string m_engine_file_path;
     std::shared_ptr<Model> m_model;
     std::vector<std::string> m_class_names_;

@@ -49,23 +49,26 @@ ONNXFramework::ONNXFramework(std::string model_path)
     for (auto shape : inputTensorShape)
         std::cout << "Input shape: " << shape << std::endl;
 
+    
     Ort::AllocatedStringPtr input_name = session.GetInputNameAllocated(0, allocator);
     inputNodeNameAllocatedStrings.push_back(std::move(input_name));
     inputNames.push_back(inputNodeNameAllocatedStrings.back().get());
-    Ort::AllocatedStringPtr output_name = session.GetOutputNameAllocated(0, allocator);
-    outputNodeNameAllocatedStrings.push_back(std::move(output_name));
-    outputNames.push_back(outputNodeNameAllocatedStrings.back().get());
-
     std::cout << "Input name: " << inputNames[0] << std::endl;
-    std::cout << "Output name: " << outputNames[0] << std::endl;
 
-    Ort::TypeInfo outputTypeInfo = session.GetOutputTypeInfo(0);
-    size_t output_count = outputTypeInfo.GetTensorTypeAndShapeInfo().GetElementCount();
-    std::cout << "Output count: " << output_count << std::endl;
+    int output_num = session.GetOutputCount();
+    for (int i = 0; i < output_num; i++) {
+        Ort::AllocatedStringPtr output_name = session.GetOutputNameAllocated(i, allocator);
+        outputNodeNameAllocatedStrings.push_back(std::move(output_name));
+        outputNames.push_back(outputNodeNameAllocatedStrings.back().get());
+        std::cout << "Output name: " << outputNames[i] << std::endl;
+        Ort::TypeInfo outputTypeInfo = session.GetOutputTypeInfo(i);
+        size_t output_count = outputTypeInfo.GetTensorTypeAndShapeInfo().GetElementCount();
+        std::cout << "Output count: " << output_count << std::endl;
 
-    float* temp_output_ptr = (float*)malloc(sizeof(float) * output_count);
-    assert(temp_output_ptr != nullptr);
-    temp_output_ptrs.push_back(temp_output_ptr);
+        float* temp_output_ptr = (float*)malloc(sizeof(float) * output_count);
+        assert(temp_output_ptr != nullptr);
+        temp_output_ptrs.push_back(temp_output_ptr);
+    }
 }
 
 ONNXFramework::~ONNXFramework()
@@ -101,9 +104,9 @@ void ONNXFramework::forward(const cv::Mat &image, std::vector<void *> &output)
     std::vector<Ort::Value> outputTensors = this->session.Run(Ort::RunOptions{nullptr},
                                                               inputNames.data(),
                                                               inputTensors.data(),
-                                                              1,
+                                                              inputNames.size(),
                                                               outputNames.data(),
-                                                              1);
+                                                              outputNames.size());
     
     for (int i = 0; i < outputTensors.size(); ++i){
         auto* rawOutput = outputTensors[i].GetTensorData<float>();

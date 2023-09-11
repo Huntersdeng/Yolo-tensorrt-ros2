@@ -9,27 +9,44 @@ DetectionNode::DetectionNode() : Node("YOLO", rclcpp::NodeOptions().automaticall
     float conf_thres, nms_thres;
     int class_num, width, height;
     this->get_parameter("model_name", model_name);
+    this->get_parameter("model_type", m_model_type_);
     this->get_parameter("engine_path", m_engine_file_path);
     this->get_parameter_or("class_txt", class_txt, std::string("coco.txt"));
     this->get_parameter_or("conf_thres", conf_thres, 0.25f);
     this->get_parameter_or("nms_thres", nms_thres, 0.65f);
-    this->get_parameter_or("class_num", class_num, 80);
     this->get_parameter_or("width", width, 640);
     this->get_parameter_or("height", height, 640);
 
     class_txt = ament_index_cpp::get_package_share_directory("stardust_tensorrt") + "/config/" + class_txt;
     read_class_name(class_txt, m_class_names_);
+    class_num = m_class_names_.size();
 
-    RCLCPP_INFO(this->get_logger(), "Initializing %s from %s", model_name.c_str(), m_engine_file_path.c_str());
+    RCLCPP_INFO(this->get_logger(), "Initializing %s-%s from %s", model_name.c_str(), m_model_type_.c_str(), m_engine_file_path.c_str());
     RCLCPP_INFO(this->get_logger(), "Reading class names from %s", class_txt.c_str());
     RCLCPP_INFO(this->get_logger(), "Conf-thres: %f, NMS-thres: %f, class-num: %d, width: %d, height: %d", conf_thres, nms_thres, class_num, width, height);
 
-    if (model_name == "yolov5")
-        m_model = std::make_shared<YOLOv5>(m_engine_file_path, conf_thres, nms_thres, class_num, cv::Size(width, height));
-    else if (model_name == "yolov8")
-        m_model = std::make_shared<YOLOv8>(m_engine_file_path);
-    else
-        m_model = std::make_shared<YOLOv5>(m_engine_file_path);
+    if (model_name == "yolov5") {
+        if (m_model_type_ == "det") {
+            m_model = std::make_shared<YOLOv5>(m_engine_file_path, cv::Size(width, height), conf_thres, nms_thres, class_num);
+        } else {
+            RCLCPP_ERROR(this->get_logger(), "%s-%s is not implemented", model_name.c_str(), m_model_type_.c_str());
+            assert(false);
+        }
+    }     
+    else if (model_name == "yolov8") {
+        if (m_model_type_ == "det") {
+            m_model = std::make_shared<YOLOv8>(m_engine_file_path);
+        } else if (m_model_type_ == "seg") {
+            m_model = std::make_shared<YOLOv8Seg>(m_engine_file_path, cv::Size(width, height), conf_thres, nms_thres, cv::Size(160, 160), 32);
+        } else {
+            RCLCPP_ERROR(this->get_logger(), "%s-%s is not implemented", model_name.c_str(), m_model_type_.c_str());
+            assert(false);
+        }
+    }
+    else {
+        RCLCPP_ERROR(this->get_logger(), "%s-%s is not implemented", model_name.c_str(), m_model_type_.c_str());
+        assert(false);
+    }
     initialize_subscribers();
     initialize_publishers();
 
@@ -102,27 +119,31 @@ void DetectionNode::image_callback(const sensor_msgs::msg::Image::ConstSharedPtr
 
     // 绘制目标检测结果并发布
     cv::Mat res;
-    draw_objects(img_raw, res, objs, m_class_names_, COLORS);
+    if (m_model_type_ == "seg") {
+        draw_objects_masks(img_raw, res, objs, m_class_names_, COLORS, MASK_COLORS);
+    } else {
+        draw_objects(img_raw, res, objs, m_class_names_, COLORS);
+    }
     auto tc = (double)std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() / 1000.;
     RCLCPP_INFO(this->get_logger(), "cost %2.4lf ms\n", tc);
 
     pub_detection->publish(*(cv_bridge::CvImage(std_msgs::msg::Header(), "rgb8", res).toImageMsg()));
 
-    // 获取目标点云
-    initialize_tf(msg_depth->header.frame_id);
+    // // 获取目标点云
+    // initialize_tf(msg_depth->header.frame_id);
 
-    std::vector<pcl::PointCloud<pcl::PointXYZ>> clouds;
-    get_objects_cloud(msg_depth, objs, clouds);
+    // std::vector<pcl::PointCloud<pcl::PointXYZ>> clouds;
+    // get_objects_cloud(msg_depth, objs, clouds);
 
-    sensor_msgs::msg::PointCloud2 ros_cloud;
-    pcl::PointCloud<pcl::PointXYZ> tmp_cloud;
-    for (const auto& cloud : clouds) {
-        tmp_cloud += cloud;
-    }
-    toROSMsg(tmp_cloud, ros_cloud);
-    ros_cloud.header.frame_id = base_frame_id;
-    ros_cloud.header.stamp = rclcpp::Clock().now();
-    pub_trash_cloud->publish(ros_cloud);
+    // sensor_msgs::msg::PointCloud2 ros_cloud;
+    // pcl::PointCloud<pcl::PointXYZ> tmp_cloud;
+    // for (const auto& cloud : clouds) {
+    //     tmp_cloud += cloud;
+    // }
+    // toROSMsg(tmp_cloud, ros_cloud);
+    // ros_cloud.header.frame_id = base_frame_id;
+    // ros_cloud.header.stamp = rclcpp::Clock().now();
+    // pub_trash_cloud->publish(ros_cloud);
 }
 
 void DetectionNode::get_objects_cloud(const sensor_msgs::msg::Image::ConstSharedPtr msg_depth, const std::vector<Object> &objs, 

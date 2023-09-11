@@ -46,12 +46,3 @@ void YOLOv8::postprocess(const std::vector<void*> output, std::vector<Object> &o
         objs.push_back(obj);
     }
 }
-
-void YOLOv8::detect(const cv::Mat &image, std::vector<det::Object> &objs)
-{
-    cv::Mat nchw;
-    this->pparam = letterbox(image, nchw, m_input_size_);
-    std::vector<void*> output;
-    this->framework->forward(nchw, output);
-    postprocess(output, objs);
-}
